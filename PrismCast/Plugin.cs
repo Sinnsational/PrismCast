@@ -29,6 +29,7 @@ public sealed class Plugin : IDalamudPlugin
     private readonly DesktopCaptureStreamer _capture;
     private readonly SessionController _session;
     private readonly PrismCastWindow _window;
+    private readonly JarvisBridge _jarvis;
 
     public Plugin(
         IDalamudPluginInterface pi,
@@ -99,6 +100,7 @@ public sealed class Plugin : IDalamudPlugin
 
         _window = new PrismCastWindow(pi, _config, _session, _deps, _plex, _video, _relay, _secrets, objects, framework);
         _windows.AddWindow(_window);
+        _jarvis = new JarvisBridge(pi, _session, Open);
 
         commands.AddHandler("/prismcast", new CommandInfo(OnCommand)
         {
@@ -159,6 +161,7 @@ public sealed class Plugin : IDalamudPlugin
         _commands.RemoveHandler("/prism");
 
         _windows.RemoveAllWindows();
+        _jarvis.Dispose();
         _session.Dispose();
         _video.Dispose();
         _tunnel.Dispose();
