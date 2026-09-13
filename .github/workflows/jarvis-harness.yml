@@ -1,0 +1,51 @@
+name: Build JARVIS Harness
+
+on:
+  push:
+    branches:
+      - jarvis-integration
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-jarvis:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Expand JARVIS source
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force jarvis-build/src | Out-Null
+          Expand-Archive -Path jarvis-build/JarvisFFXIV-v0.1-source.zip -DestinationPath jarvis-build/src -Force
+
+      - name: Build JARVIS
+        shell: pwsh
+        run: dotnet build jarvis-build/src/JarvisFFXIV/JarvisFFXIV/JarvisFFXIV.csproj -c Release
+
+      - name: Package plugin
+        shell: pwsh
+        run: |
+          $out = 'jarvis-build/src/JarvisFFXIV/JarvisFFXIV/bin/Release'
+          $files = @(
+            (Join-Path $out 'JarvisFFXIV.dll'),
+            (Join-Path $out 'JarvisFFXIV.json'),
+            (Join-Path $out 'JarvisFFXIV.deps.json')
+          ) | Where-Object { Test-Path $_ }
+          if (-not ($files | Where-Object { $_ -like '*JarvisFFXIV.dll' })) { throw 'JarvisFFXIV.dll was not produced.' }
+          Compress-Archive -Path $files -DestinationPath 'jarvis-build/JarvisFFXIV-v0.1-plugin.zip' -Force
+
+      - name: Upload JARVIS plugin
+        uses: actions/upload-artifact@v4
+        with:
+          name: JarvisFFXIV-v0.1-plugin
+          path: jarvis-build/JarvisFFXIV-v0.1-plugin.zip
+          if-no-files-found: error
